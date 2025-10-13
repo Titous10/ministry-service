@@ -1,0 +1,22 @@
+services:
+  ministry-service:
+    build: .
+    image: ministry-service:latest
+    container_name: ministry-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - POSTGRES_URL=jdbc:postgresql://192.168.12.183:5432/ministries
+      - POSTGRES_USER=ministry_user
+      - POSTGRES_PASSWORD=ministry_pass
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    ports:
+      - "8087:8080"
+    networks:
+      - application-network
+    volumes:
+      - ./uploads:/var/www/projects/ministry/uploads
+
+networks:
+  application-network:
+    external: true
+    name: application-network

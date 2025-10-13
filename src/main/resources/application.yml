@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://192.168.12.183:5432/mimistries?currentSchema=public #jdbc:postgresql://192.168.12.183:5432/mimistries_local?currentSchema=public
+    username: ministry_user
+    password: ministry_pass
+
+  jpa:
+    hibernate:
+      ddl-auto: create  #update create validate  #CREATE SEQUENCE member_id_seq START 1 INCREMENT 1;  ALTER ROLE member_user SET search_path TO public;
+
+  kafka:
+    bootstrap-servers: kafka:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: ministry-service-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"  # or your specific package like com.joseph.member_service.model
+
+  web:
+    resources:
+      static-locations: file:/var/www/projects/ministry/uploads/
+
+# Custom app-level config
+app:
+  kafka:
+    topic: ministries
+  values:
+    church-shortname: EBS
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
