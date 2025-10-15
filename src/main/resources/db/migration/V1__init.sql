@@ -1,7 +1,7 @@
 -- ministries
 CREATE TABLE IF NOT EXISTS ministries
 (
-    id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id               uuid PRIMARY KEY,
     name             varchar(255) NOT NULL UNIQUE,
     type             varchar(50),
     established_date date,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS ministries
 -- ministry_members
 CREATE TABLE IF NOT EXISTS ministry_members
 (
-    id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id            uuid PRIMARY KEY,
     ministry_id   uuid NOT NULL,
     member_id     uuid NOT NULL,
     role          varchar(50),
