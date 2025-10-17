@@ -15,6 +15,8 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -122,6 +124,46 @@ public class MinistryServiceImpl implements MinistryService {
                 }
             }
         }
+
+    @Override
+    @CircuitBreaker(name = "memberServiceClient", fallbackMethod = "potentialMembersFallback")
+    public List<PotentialMemberDto> getPotentialMembers(String age, String gender, String maritalStatus) {
+      /*  Ministry m = ministryRepository.findById(ministryId).orElseThrow();
+        Map<String,String> params = new HashMap<>();
+        var c = m.getCriteria();
+        if (c != null) {
+            if (c.getGender() != null && !"ALL".equalsIgnoreCase(c.getGender())) params.put("gender", c.getGender());
+            if (c.getAgeGroup() != null && !"ALL".equalsIgnoreCase(c.getAgeGroup())) params.put("ageGroup", c.getAgeGroup());
+            if (c.getMaritalStatus() != null && !"ALL".equalsIgnoreCase(c.getMaritalStatus())) params.put("maritalStatus", c.getMaritalStatus());
+        }*/
+
+        List<Map<String,Object>> res = memberServiceFeignClient.getAllMembers(age, gender, maritalStatus);
+        // convert to PotentialMemberDto (minimal mapping)
+        List<PotentialMemberDto> list = new ArrayList<>();
+         System.out.println(res.get(0));
+        for (Map<String,Object> mobj : res) {
+            PotentialMemberDto p = new PotentialMemberDto();
+            p.setId(Objects.toString(mobj.get("id"), null));
+            p.setPhotoUrl(Objects.toString(mobj.get("pictureUrl"), null));
+            Map<String, Object> personalInfo = (Map<String, Object>) mobj.get("personalInfo");
+            p.setFirstName(personalInfo != null ? Objects.toString(personalInfo.get("firstName"), null) : null);
+            p.setLastName(personalInfo != null ? Objects.toString(personalInfo.get("lastName"), null) : null);
+            p.setName(p.getFirstName().concat(" ").concat(p.getLastName()));
+            LocalDate birthDate = (personalInfo != null ? LocalDate.parse(Objects.toString(personalInfo.get("birthdate"), null)) : null);
+            if (birthDate != null) p.setAge(Period.between(birthDate, LocalDate.now()).getYears());
+            p.setGender(personalInfo != null ? Objects.toString(personalInfo.get("gender"), null) : null);
+            p.setMaritalStatus(personalInfo != null ? Objects.toString(personalInfo.get("maritalStatus"), null) : null);
+            Map<String, Object> contact = (Map<String, Object>) mobj.get("contact");
+            p.setPhone(contact != null ? Objects.toString(contact.get("mobilePhoneNumber"), null) : null);
+            list.add(p);
+        }
+        return list;
+    }
+
+    private List<PotentialMemberDto> potentialMembersFallback(Throwable e) {
+        // This is called automatically if the Feign client fails
+        return Collections.emptyList();
+    }
 
         @Override
         @CircuitBreaker(name = "memberServiceClient", fallbackMethod = "potentialMembersFallback")

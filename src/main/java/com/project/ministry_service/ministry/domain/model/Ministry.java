@@ -6,6 +6,9 @@ import com.project.ministry_service.ministry.domain.model.embeddable.Criteria;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -34,6 +37,8 @@ public class Ministry {
     private LocalDate termEnd;
 
     @Embedded
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
     private Criteria criteria;
 
     private boolean active = true;

@@ -13,6 +13,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/ministries")
+@CrossOrigin
 public class MinistryController {
 
     private final MinistryService ministryService;
@@ -33,6 +34,12 @@ public class MinistryController {
     public ResponseEntity<Ministry> update(@PathVariable UUID id, @RequestBody CreateMinistryRequest req) {
         Ministry m = ministryService.updateMinistry(id, req);
         return ResponseEntity.ok(m);
+    }
+
+    @GetMapping("/potential-members")
+    public ResponseEntity<List<PotentialMemberDto>> potentialMembers(@RequestParam String ageGroup, @RequestParam String gender, @RequestParam String maritalStatus) {
+        System.out.println(ageGroup.concat(gender).concat(maritalStatus));
+        return ResponseEntity.ok(ministryService.getPotentialMembers(ageGroup, gender, maritalStatus));
     }
 
     @GetMapping("/{id}/potential-members")

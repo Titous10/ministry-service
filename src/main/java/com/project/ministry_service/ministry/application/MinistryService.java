@@ -20,5 +20,8 @@ public interface MinistryService {
     @CircuitBreaker(name = "memberServiceClient", fallbackMethod = "potentialMembersFallback")
     List<PotentialMemberDto> getPotentialMembers(UUID ministryId);
 
+    @CircuitBreaker(name = "memberServiceClient", fallbackMethod = "potentialMembersFallback")
+    List<PotentialMemberDto> getPotentialMembers(String age, String gender, String maritalStatus);
+
     Optional<Map<String, Object>> highestRoleForMember(UUID memberId);
 }
