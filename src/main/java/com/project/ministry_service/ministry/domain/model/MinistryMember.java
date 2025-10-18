@@ -21,7 +21,7 @@ public class MinistryMember {
     private UUID ministryId;
 
     @Column(name = "member_id", columnDefinition = "uuid", nullable = false)
-    private UUID memberId;
+    private String memberId;
 
     @Enumerated(EnumType.STRING)
     private RoleName role;

@@ -9,10 +9,10 @@ import java.util.UUID;
 
 @Repository
 public interface MinistryMemberRepository extends JpaRepository<MinistryMember, UUID> {
-    List<MinistryMember> findAllByMemberIdAndActiveTrue(UUID memberId);
+    List<MinistryMember> findAllByMemberIdAndActiveTrue(String memberId);
 
     List<MinistryMember> findAllByMinistryId(UUID ministryId);
 
-    boolean existsByMinistryIdAndMemberId(UUID ministryId, UUID memberId);
+    boolean existsByMinistryIdAndMemberId(UUID ministryId, String memberId);
     void deleteAllByMinistryId(UUID ministryId);
 }

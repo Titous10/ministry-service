@@ -1,7 +1,8 @@
 package com.project.ministry_service.ministry.application;
 
 import com.project.ministry_service.ministry.api.dto.CreateMinistryRequest;
-import com.project.ministry_service.ministry.api.dto.PotentialMemberDto;
+import com.project.ministry_service.ministry.api.dto.MemberDto;
+import com.project.ministry_service.ministry.api.dto.MinistryDto;
 import com.project.ministry_service.ministry.domain.model.Ministry;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,10 +19,12 @@ public interface MinistryService {
     Ministry updateMinistry(UUID id, CreateMinistryRequest req);
 
     @CircuitBreaker(name = "memberServiceClient", fallbackMethod = "potentialMembersFallback")
-    List<PotentialMemberDto> getPotentialMembers(UUID ministryId);
+    List<MemberDto> getPotentialMembers(UUID ministryId);
 
     @CircuitBreaker(name = "memberServiceClient", fallbackMethod = "potentialMembersFallback")
-    List<PotentialMemberDto> getPotentialMembers(String age, String gender, String maritalStatus);
+    List<MemberDto> getPotentialMembers(String age, String gender, String maritalStatus);
 
-    Optional<Map<String, Object>> highestRoleForMember(UUID memberId);
+    Optional<Map<String, Object>> highestRoleForMember(String memberId);
+
+    List<MinistryDto> getMinistries();
 }

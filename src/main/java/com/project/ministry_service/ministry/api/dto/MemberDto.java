@@ -3,7 +3,7 @@ package com.project.ministry_service.ministry.api.dto;
 import lombok.Data;
 
 @Data
-public class PotentialMemberDto {
+public class MemberDto {
     private String id;
     private String name;
     private String firstName;
