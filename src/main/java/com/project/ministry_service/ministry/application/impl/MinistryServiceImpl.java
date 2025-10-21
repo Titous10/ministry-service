@@ -79,7 +79,7 @@ public class MinistryServiceImpl implements MinistryService {
             Map.entry(RoleName.MECHANIC, 64),
 
             // 🎨 Creative, Arts & Tech Team
-            Map.entry(RoleName.APPLICATION_DEVELOPER, 70),
+            Map.entry(RoleName.SOFTWARE_DEVELOPER, 70),
             Map.entry(RoleName.ELECTRICAL_TECHNICIAN, 71),
             Map.entry(RoleName.DANCER, 72),
             Map.entry(RoleName.PROJECTIONIST, 73),
