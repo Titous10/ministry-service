@@ -9,6 +9,7 @@ import java.util.UUID;
 
 @Repository
 public interface MinistryMemberRepository extends JpaRepository<MinistryMember, UUID> {
+    List<MinistryMember> findAllByMemberIdAndActiveTrueAndCommitteeTrue(String memberId);
     List<MinistryMember> findAllByMemberIdAndActiveTrue(String memberId);
 
     List<MinistryMember> findAllByMinistryId(UUID ministryId);

@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -58,5 +60,10 @@ public class MinistryController {
     public ResponseEntity<String> rebuildHierarchy(@PathVariable UUID id) {
         hierarchyJdbcService.rebuildFullHierarchy(); // full rebuild
         return ResponseEntity.ok("Rebuild scheduled/done");
+    }
+
+    @GetMapping("/{memberId}/highest-role")
+    public ResponseEntity<Optional<Map<String, Object>>> getHighestRole(@PathVariable String memberId) {
+        return ResponseEntity.ok(ministryService.highestRoleForMember(memberId));
     }
 }

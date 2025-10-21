@@ -11,10 +11,10 @@ import com.project.ministry_service.ministry.application.HierarchyJdbcService;
 import com.project.ministry_service.ministry.application.MinistryService;
 import com.project.ministry_service.ministry.domain.model.Ministry;
 import com.project.ministry_service.ministry.domain.model.MinistryMember;
+import com.project.ministry_service.ministry.domain.repository.MinistryHierarchyRepository;
 import com.project.ministry_service.ministry.domain.repository.MinistryMemberRepository;
 import com.project.ministry_service.ministry.domain.repository.MinistryRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import org.mapstruct.factory.Mappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,26 +32,84 @@ public class MinistryServiceImpl implements MinistryService {
     private final HierarchyJdbcService hierarchyJdbcService;
     private final MinistryMapper ministryMapper;
 
-    private final Map<RoleName, Integer> rolePriority = Map.of(
-            RoleName.PRESIDENT, 1,
-            RoleName.VICE_PRESIDENT, 2,
-            RoleName.TEACHER, 3,
-            RoleName.SECRETARY, 4,
-            RoleName.TREASURER, 5,
-            RoleName.STUDENT, 6,
-            RoleName.MEMBER, 7
+    private static final Map<RoleName, Integer> rolePriority = Map.ofEntries(
+            // 🕊️ Top-Level Pastoral Leadership
+            Map.entry(RoleName.SENIOR_PASTOR, 0),
+            Map.entry(RoleName.LEAD_PASTOR, 1),
+            Map.entry(RoleName.ASSOCIATE_PASTOR, 2),
+
+            // 🧱 Executive & Governing Leadership
+            Map.entry(RoleName.CHAIRMAN, 10),
+            Map.entry(RoleName.VICE_CHAIRMAN, 11),
+            Map.entry(RoleName.DEACON, 12),
+            Map.entry(RoleName.DEACONESS, 13),
+
+            // 🏛️ Departmental & Ministry Heads
+            Map.entry(RoleName.PRESIDENT, 20),
+            Map.entry(RoleName.VICE_PRESIDENT, 21),
+            Map.entry(RoleName.SUPERINTENDENT, 22),
+            Map.entry(RoleName.COORDINATOR, 23),
+            Map.entry(RoleName.ASSISTANT_COORDINATOR, 24),
+
+            // 🗂️ Administrative & Financial Staff
+            Map.entry(RoleName.SECRETARY, 30),
+            Map.entry(RoleName.ASSISTANT_SECRETARY, 31),
+            Map.entry(RoleName.TREASURER, 32),
+            Map.entry(RoleName.ASSISTANT_TREASURER, 33),
+            Map.entry(RoleName.FINANCE_OFFICER, 34),
+            Map.entry(RoleName.ADVISOR, 35),
+            Map.entry(RoleName.REPRESENTATIVE, 36),
+
+            // 💻 Technical & Operational Directors
+            Map.entry(RoleName.IT_ADMINISTRATOR, 40),
+            Map.entry(RoleName.MEDIA_DIRECTOR, 41),
+            Map.entry(RoleName.PROGRAM_DIRECTOR, 42),
+            Map.entry(RoleName.PUBLIC_RELATIONS_OFFICER, 43),
+
+            // 🧑🏽‍🏫 Educational & Service Roles
+            Map.entry(RoleName.TEACHER, 50),
+            Map.entry(RoleName.USHER, 51),
+            Map.entry(RoleName.GREETER, 52),
+
+            // 🧰 Facilities & Maintenance
+            Map.entry(RoleName.MAINTENANCE_WORKER, 60),
+            Map.entry(RoleName.CUSTODIAN, 61),
+            Map.entry(RoleName.GROUNDSKEEPER, 62),
+            Map.entry(RoleName.BUS_DRIVER, 63),
+            Map.entry(RoleName.MECHANIC, 64),
+
+            // 🎨 Creative, Arts & Tech Team
+            Map.entry(RoleName.APPLICATION_DEVELOPER, 70),
+            Map.entry(RoleName.ELECTRICAL_TECHNICIAN, 71),
+            Map.entry(RoleName.DANCER, 72),
+            Map.entry(RoleName.PROJECTIONIST, 73),
+            Map.entry(RoleName.AUDIO_ENGINEER, 74),
+            Map.entry(RoleName.VIDEO_OPERATOR, 75),
+            Map.entry(RoleName.LIGHTING_TECHNICIAN, 76),
+            Map.entry(RoleName.MEDIA_CONTENT_CREATOR, 77),
+            Map.entry(RoleName.TECHNICAL_SUPPORT, 78),
+
+            // 🎉 Event & General Roles
+            Map.entry(RoleName.EVENT_PLANNER, 90),
+            Map.entry(RoleName.SECURITY_OFFICER, 91),
+            Map.entry(RoleName.VOLUNTEER, 92),
+            Map.entry(RoleName.INTERN, 93),
+            Map.entry(RoleName.TRAINEE, 94),
+            Map.entry(RoleName.MEMBER, 95)
     );
+    private final MinistryHierarchyRepository ministryHierarchyRepository;
 
     public MinistryServiceImpl(MinistryRepository ministryRepository,
                                MinistryMemberRepository ministryMemberRepository,
                                MemberServiceFeignClient memberServiceFeignClient,
                                HierarchyJdbcService hierarchyJdbcService,
-                               MinistryMapper ministryMapper) {
+                               MinistryMapper ministryMapper, MinistryHierarchyRepository ministryHierarchyRepository) {
         this.ministryRepository = ministryRepository;
         this.ministryMemberRepository = ministryMemberRepository;
         this.memberServiceFeignClient = memberServiceFeignClient;
         this.hierarchyJdbcService = hierarchyJdbcService;
         this.ministryMapper = ministryMapper;
+        this.ministryHierarchyRepository = ministryHierarchyRepository;
     }
 
     @Override
@@ -204,37 +262,38 @@ public class MinistryServiceImpl implements MinistryService {
     // highest role logic similar to earlier...
     @Override
     public Optional<Map<String, Object>> highestRoleForMember(String memberId) {
-        List<MinistryMember> entries = ministryMemberRepository.findAllByMemberIdAndActiveTrue(memberId);
+
+        // Fetch all active ministry memberships, prioritizing committee memberships
+        List<MinistryMember> entries = ministryMemberRepository.findAllByMemberIdAndActiveTrueAndCommitteeTrue(memberId);
+        if (entries.isEmpty()) entries = ministryMemberRepository.findAllByMemberIdAndActiveTrue(memberId);
         if (entries.isEmpty()) return Optional.empty();
 
-        Set<UUID> mids = entries.stream().map(MinistryMember::getMinistryId).collect(Collectors.toSet());
-        Map<UUID, Ministry> ministries = ministryRepository.findAllById(mids).stream().collect(Collectors.toMap(Ministry::getId, x -> x));
+        // Collect ministry IDs
+        Set<UUID> ministryIds = entries.stream()
+                .map(MinistryMember::getMinistryId)
+                .collect(Collectors.toSet());
 
-        Map<UUID, Integer> depthCache = new HashMap<>();
-        for (UUID mid : ministries.keySet()) depthCache.put(mid, computeDepth(mid, ministries));
+        // Fetch hierarchy info (descent with min-of-max-depth)
+        Map<UUID, String> ministryHierarchyMap = ministryHierarchyRepository.findDescentWithMinOfMaxDepth(ministryIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        x -> (UUID) x[0],
+                        x -> String.valueOf(x[2])
+                ));
 
-        MinistryMember best = entries.stream().min(Comparator
-                        .comparing((MinistryMember mm) -> depthCache.getOrDefault(mm.getMinistryId(), Integer.MAX_VALUE))
-                        .thenComparing(mm -> rolePriority.getOrDefault(mm.getRole(), Integer.MAX_VALUE)))
-                .orElseThrow(() -> new NoSuchElementException("No active MinistryMember found for member " + memberId));
+        // Pick the best member by hierarchy depth first, then role priority
+        MinistryMember best = entries.stream()
+                .min(Comparator
+                        .comparing((MinistryMember mm) -> ministryHierarchyMap.containsKey(mm.getMinistryId()) ? 0 : Integer.MAX_VALUE)
+                        .thenComparing(mm -> rolePriority.getOrDefault(mm.getRole(), Integer.MAX_VALUE))
+                )
+                .orElse(entries.get(0)); // fallback in case something goes wrong
 
-        Ministry bestMin = ministries.get(best.getMinistryId());
-        Map<String, Object> res = new HashMap<>();
-        res.put("memberId", memberId);
-        res.put("role", best.getRole());
-        res.put("ministryId", bestMin.getId());
-        res.put("ministryName", bestMin.getName());
-        return Optional.of(res);
-    }
-
-    private int computeDepth(UUID mid, Map<UUID, Ministry> ministries) {
-        int depth = 0;
-        Ministry cur = ministries.get(mid);
-        while (cur != null && cur.getParentId() != null) {
-            depth++;
-            cur = ministries.get(cur.getParentId());
-            if (cur == null) cur = ministryRepository.findById(ministries.get(mid).getParentId()).orElse(null);
-        }
-        return depth;
+        return Optional.of(Map.of(
+                "memberId", best.getMemberId(),
+                "role", best.getRole(),
+                "ministryId", best.getMinistryId(),
+                "ministryName", ministryHierarchyMap.get(best.getMinistryId())
+        ));
     }
 }
