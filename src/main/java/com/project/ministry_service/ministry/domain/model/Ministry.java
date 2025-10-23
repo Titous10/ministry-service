@@ -5,6 +5,7 @@ import com.project.ministry_service.common.enums.MinistryType;
 import com.project.ministry_service.ministry.domain.model.embeddable.Criteria;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
@@ -16,6 +17,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "ministries", uniqueConstraints = {@UniqueConstraint(columnNames = {"name"})})
 @Data
+@Getter
 public class Ministry {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

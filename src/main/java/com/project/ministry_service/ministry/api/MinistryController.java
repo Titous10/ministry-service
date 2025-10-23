@@ -42,8 +42,13 @@ public class MinistryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<MinistryDto>> search() {
+    public ResponseEntity<List<MinistryDto>> getMinistries() {
         return ResponseEntity.ok(ministryService.getMinistries());
+    }
+
+    @GetMapping("/details")
+    public ResponseEntity<List<MinistryDto>> getMinistryDetails() {
+        return ResponseEntity.ok(ministryService.getMinistriesDetails());
     }
 
     @GetMapping("/potential-members")

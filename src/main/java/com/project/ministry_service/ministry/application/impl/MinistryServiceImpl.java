@@ -7,6 +7,7 @@ import com.project.ministry_service.ministry.api.dto.CreateMinistryRequest;
 import com.project.ministry_service.ministry.api.dto.MemberAssignmentDto;
 import com.project.ministry_service.ministry.api.dto.MemberDto;
 import com.project.ministry_service.ministry.api.dto.MinistryDto;
+import com.project.ministry_service.ministry.api.dto.embeddable.MinistryMemberDto;
 import com.project.ministry_service.ministry.application.HierarchyJdbcService;
 import com.project.ministry_service.ministry.application.MinistryService;
 import com.project.ministry_service.ministry.domain.model.Ministry;
@@ -15,12 +16,15 @@ import com.project.ministry_service.ministry.domain.repository.MinistryHierarchy
 import com.project.ministry_service.ministry.domain.repository.MinistryMemberRepository;
 import com.project.ministry_service.ministry.domain.repository.MinistryRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Service
@@ -166,6 +170,80 @@ public class MinistryServiceImpl implements MinistryService {
 
     public List<MinistryDto> getMinistries() {
         return ministryMapper.toDtoList(ministryRepository.findAll());
+    }
+
+    public List<MinistryDto> getMinistriesDetails() {
+        // 1️⃣ Fetch all ministries once
+        List<Ministry> ministries = ministryRepository.findAll();
+        List<MinistryDto> ministryDtos = ministryMapper.toDtoList(ministries);
+
+        if (ministries.isEmpty()) return List.of();
+
+        // 2️⃣ Fetch all MinistryMembers in one query
+        List<MinistryMember> allMembers = ministryMemberRepository.findAllByMinistryIdIn(
+                ministries.stream().map(Ministry::getId).collect(Collectors.toSet())
+        );
+
+        // 3️⃣ Group MinistryMembers by ministryId
+        Map<UUID, List<MinistryMember>> membersByMinistry = allMembers.stream()
+                .collect(Collectors.groupingBy(MinistryMember::getMinistryId));
+
+        // 4️⃣ Batch fetch all MemberDtos from Feign
+        Set<String> allMemberIds = allMembers.stream()
+                .map(MinistryMember::getMemberId)
+                .collect(Collectors.toSet());
+
+        Map<String, MemberDto> memberDtoMap = memberServiceFeignClient.getMembersByIds(allMemberIds).stream()
+                .collect(Collectors.toMap(MemberDto::getId, dto -> dto));
+
+        // 5️⃣ Populate MinistryMemberDto for each ministry
+        ministryDtos.forEach(ministryDto -> {
+            UUID ministryId = UUID.fromString(ministryDto.getId());
+            List<MinistryMember> ministryMembers = membersByMinistry.getOrDefault(ministryId, List.of());
+
+            MinistryMemberDto ministryMemberDto = new MinistryMemberDto();
+            ministryMemberDto.setUnit(new ArrayList<>());
+            ministryMemberDto.setCommittee(new ArrayList<>());
+
+            MemberDto leader = null;
+            int leaderPriority = Integer.MAX_VALUE;
+
+            for (MinistryMember mm : ministryMembers) {
+                MemberDto original = memberDtoMap.get(mm.getMemberId());
+                if (original == null) continue;
+
+                // Build a new DTO directly for this ministry
+                MemberDto dto = MemberDto.builder()
+                        .id(original.getId())
+                        .name(original.getName())
+                        .firstName(original.getFirstName())
+                        .lastName(original.getLastName())
+                        .gender(original.getGender())
+                        .age(original.getAge())
+                        .maritalStatus(original.getMaritalStatus())
+                        .photoUrl(original.getPhotoUrl())
+                        .phone(original.getPhone())
+                        .role(mm.isCommittee() ? mm.getRole() : null)
+                        .memberRole(!mm.isCommittee() ? mm.getRole() : null)
+                        .build();
+
+                if (mm.isCommittee()) {
+                    ministryMemberDto.getCommittee().add(dto);
+                    int priority = rolePriority.getOrDefault(mm.getRole(), Integer.MAX_VALUE);
+                    if (priority < leaderPriority) {
+                        leaderPriority = priority;
+                        leader = dto;
+                    }
+                } else {
+                    ministryMemberDto.getUnit().add(dto);
+                }
+            }
+
+            ministryMemberDto.setLeader(leader);
+            ministryDto.setMinistryMemberDto(ministryMemberDto);
+        });
+
+        return ministryDtos;
     }
 
     private void persistAssignments(UUID ministryId, List<MemberAssignmentDto> assignments) {

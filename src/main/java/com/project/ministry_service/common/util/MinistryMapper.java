@@ -1,50 +1,71 @@
 package com.project.ministry_service.common.util;
 
-import com.project.ministry_service.ministry.api.dto.MemberDto;
+import com.project.ministry_service.common.enums.MinistryType;
 import com.project.ministry_service.ministry.api.dto.MinistryDto;
+import com.project.ministry_service.ministry.api.dto.embeddable.Info;
+import com.project.ministry_service.ministry.api.dto.embeddable.MinistryMemberDto;
 import com.project.ministry_service.ministry.domain.model.Ministry;
-import org.mapstruct.InheritConfiguration;
-import org.mapstruct.InheritInverseConfiguration;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
-@Mapper(componentModel = "spring")
-public interface MinistryMapper {
+@Component
+public class MinistryMapper {
+
     // ------------------ ENTITY → DTO ------------------
+    public static MinistryDto toDto(Ministry ministry) {
+        if (ministry == null) return null;
 
-    @Mapping(target = "id", expression = "java(ministry.getId() != null ? ministry.getId().toString() : null)")
-    @Mapping(target = "info.name", source = "name")
-    @Mapping(target = "info.type", source = "type")
-    @Mapping(target = "info.startDate", source = "termStart")
-    @Mapping(target = "info.endDate", source = "termEnd")
-    @Mapping(target = "info.anniversaryDate", source = "establishedDate")
-    @Mapping(target = "info.status", expression = "java(ministry.isActive() ? \"active\" : \"inactive\")")
-    //@Mapping(target = "info.status", source = "active")
-    @Mapping(target = "info.direction", source = "parentId")
-    @Mapping(target = "configuration", source = "criteria")
-    @Mapping(target = "ministryMember", ignore = true)// optional: fill later
-    MinistryDto toDto(Ministry ministry);
+        MinistryDto dto = new MinistryDto();
+        dto.setId(ministry.getId() != null ? ministry.getId().toString() : null);
 
-    List<MinistryDto> toDtoList(List<Ministry> ministries);
+        Info info = new Info();
+        info.setName(ministry.getName());
+        info.setType(ministry.getType() != null ? ministry.getType() : null);
+        info.setStartDate(ministry.getTermStart() != null ? ministry.getTermStart() : null);
+        info.setEndDate(ministry.getTermEnd() != null ? ministry.getTermEnd() : null);
+        info.setAnniversaryDate(ministry.getEstablishedDate() != null ? ministry.getEstablishedDate() : null);
+        info.setStatus(ministry.isActive() ? "active" : "inactive");
+        info.setDirection(ministry.getParentId() != null ? ministry.getParentId().toString() : null);
 
+        dto.setInfo(info);
+        dto.setConfiguration(ministry.getCriteria());
+        dto.setMinistryMemberDto(null); // optional, fill later if needed
+
+        return dto;
+    }
+
+    public static List<MinistryDto> toDtoList(List<Ministry> ministries) {
+        if (ministries == null) return null;
+        return ministries.stream().map(MinistryMapper::toDto).collect(Collectors.toList());
+    }
 
     // ------------------ DTO → ENTITY ------------------
+    public static Ministry toEntity(MinistryDto dto) {
+        if (dto == null) return null;
 
-    @Mapping(target = "id", ignore = true) // ignore for create
-    @Mapping(target = "name", source = "info.name")
-    @Mapping(target = "type", source = "info.type")
-    @Mapping(target = "establishedDate", source = "info.anniversaryDate")
-    @Mapping(target = "termStart", source = "info.startDate")
-    @Mapping(target = "termEnd", source = "info.endDate")
-    @Mapping(target = "criteria", source = "configuration")
-    @Mapping(target = "parentId", ignore = true)
-    @Mapping(target = "active", constant = "true")
-    Ministry toEntity(MinistryDto dto);
+        Ministry ministry = new Ministry();
+        // id ignored for creation
+        ministry.setName(dto.getInfo() != null ? dto.getInfo().getName() : null);
+        ministry.setType(dto.getInfo() != null && dto.getInfo().getType() != null
+                ? dto.getInfo().getType()
+                : null);
+        ministry.setEstablishedDate(dto.getInfo() != null ? dto.getInfo().getAnniversaryDate() : null);
+        ministry.setTermStart(dto.getInfo() != null ? dto.getInfo().getStartDate() : null);
+        ministry.setTermEnd(dto.getInfo() != null ? dto.getInfo().getEndDate() : null);
+        ministry.setCriteria(dto.getConfiguration());
+        ministry.setActive(true); // default true
+        // parentId ignored for creation
+        return ministry;
+    }
 
-    // same but for update, we keep id
-    @InheritConfiguration(name = "toEntity")
-    @Mapping(target = "id", expression = "java(dto.getId() != null ? java.util.UUID.fromString(dto.getId()) : null)")
-    Ministry toEntityWithId(MinistryDto dto);
+    public static Ministry toEntityWithId(MinistryDto dto) {
+        if (dto == null) return null;
+
+        Ministry ministry = toEntity(dto);
+        ministry.setId(dto.getId() != null ? UUID.fromString(dto.getId()) : null);
+        return ministry;
+    }
 }
