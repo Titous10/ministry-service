@@ -1,12 +1,37 @@
 spring:
   datasource:
-    url: jdbc:postgresql://192.168.12.183:5432/mimistries?currentSchema=public #jdbc:postgresql://192.168.12.183:5432/mimistries_local?currentSchema=public
+    url: jdbc:postgresql://192.168.12.183:5432/ministries_local?currentSchema=public #jdbc:postgresql://192.168.12.183:5432/mimistries_local?currentSchema=public
     username: ministry_user
     password: ministry_pass
+    driver-class-name: org.postgresql.Driver
 
-  jpa:
-    hibernate:
-      ddl-auto: create  #update create validate  #CREATE SEQUENCE member_id_seq START 1 INCREMENT 1;  ALTER ROLE member_user SET search_path TO public;
+    jpa:
+      hibernate:
+        ddl-auto: create #validate for production
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+      show-sql: true
+
+  #jpa:
+    #hibernate:
+      #ddl-auto: create  #update create validate  #CREATE SEQUENCE member_id_seq START 1 INCREMENT 1;  ALTER ROLE member_user SET search_path TO public;
+  flyway:
+    enabled: true
+    connect-retries: 3
+
+  member:
+    service:
+      base-url: http://192.168.12.183:8086
+
+  resilience4j:
+    circuitbreaker:
+      instances:
+        memberServiceClient:
+          slidingWindowSize: 20
+          failureRateThreshold: 50
+          waitDurationInOpenState: 10s
+
 
   kafka:
     bootstrap-servers: kafka:9092
@@ -36,4 +61,3 @@ management:
     web:
       exposure:
         include: health,info,prometheus
-
