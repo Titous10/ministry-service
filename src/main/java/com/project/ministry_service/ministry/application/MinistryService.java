@@ -27,4 +27,6 @@ public interface MinistryService {
     Optional<Map<String, Object>> highestRoleForMember(String memberId);
 
     List<MinistryDto> getMinistries();
+
+    List<MinistryDto> getMinistriesDetails();
 }

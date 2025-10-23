@@ -213,6 +213,10 @@
 				<configuration>
 					<source>17</source>
 					<target>17</target>
+					<annotationProcessors>
+						<annotationProcessor>org.mapstruct.ap.MappingProcessor</annotationProcessor>
+						<annotationProcessor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor</annotationProcessor>
+					</annotationProcessors>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>org.mapstruct</groupId>
